@@ -106,7 +106,9 @@ def get_issues(permanent_token: str, project_id: str, full_refresh: bool = False
         "fields": "idReadable,numberInProject,summary,created,updated,description,wikifiedDescription,comments(author(name),created,deleted,text,reactions(author(name),reaction)),attachments(name,url),project(id,shortName),tags(name),customFields(name,value(name))",
         "query": f"project:{{{project_id}}} sort by: {{issue id}} desc",
     }
-    issues_endpoint = f"{BASE_YOUTRACK_URL}/youtrack/api/issues"
+    issues_endpoint = f"{BASE_YOUTRACK_URL}/api/issues"
+    #issues_endpoint = f"{BASE_YOUTRACK_URL}/youtrack/api/issues"
+
 
     doing = 1
     offset = 0
@@ -123,6 +125,14 @@ def get_issues(permanent_token: str, project_id: str, full_refresh: bool = False
       if response.status_code != 200:
           print("Failed to fetch issues:", response.text)
           return
+      
+      # --- TEMPORARY DEBUGGING STEP ---
+      # Print the full response from the server before trying to parse it.
+      print("--- RAW SERVER RESPONSE ---")
+      print(response.text)
+      print("---------------------------")
+      # --- END DEBUGGING ---
+      
       issues = response.json()
 
       if (len(issues) <1):
