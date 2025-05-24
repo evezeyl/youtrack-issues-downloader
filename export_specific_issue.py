@@ -15,7 +15,7 @@ BASE_YOUTRACK_URL = os.getenv("YOUTRACK_URL")
 # PROJECT_ID = os.getenv("YOUTRACK_PROJECT_ID")
 ID_PAD_LENGTH = int(os.getenv("ID_PAD_LENGTH"))
 EXTENSION = os.getenv("EXTENSION") # Use "html" for the spaces that use rich text formatting
-
+MAX_SUMMARY_LENGTH_IN_PATH=int(os.getenv("MAX_SUMMARY_LENGTH_IN_PATH"))
 
 # --- Helper functions from the original script (unchanged) ---
 
@@ -61,6 +61,7 @@ def format_yt_time(atime):
    )
    return timestamp_obj.isoformat(timespec="seconds")
 
+
 def proc_issues(issues, headers):
     """
     Processes a list of issue objects, creating folders and files.
@@ -73,35 +74,41 @@ def proc_issues(issues, headers):
     for issue in issues:
         issue_id = issue["idReadable"]
         issue_number_in_project = issue["numberInProject"]
-        issue_summary = issue["summary"]
+        issue_summary = issue["summary"] or "" # Ensure summary is not None
         project_short_name = issue["project"]["shortName"]
 
-        issue_target_path = os.path.join(
-            "exports",
-            f"{project_short_name}-{str(issue_number_in_project).zfill(ID_PAD_LENGTH)}-{clean_folder_name(issue_summary)}",
-        )
-
+        # Truncating summary for both directory and file ---
+        # 1. Truncate the summary to the max length
+        truncated_summary = issue_summary[:MAX_SUMMARY_LENGTH_IN_PATH]
+        # 2. Clean it for use in a path
+        safe_summary_part = clean_folder_name(truncated_summary)
+        # 3. Use the safe summary part to build the directory name
+        directory_name = f"{project_short_name}-{str(issue_number_in_project).zfill(ID_PAD_LENGTH)}-{safe_summary_part}"
+        issue_target_path = os.path.join("exports", directory_name)
+        
         print(f"Processing {issue_target_path}")
         os.makedirs(issue_target_path, exist_ok=True)
 
-        # Save issue details
-        #with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w", encoding='utf-8') as f:
-        with open(os.path.join(issue_target_path, f"{issue_id}.{EXTENSION}"), "w", encoding='utf-8') as f:
+        # 4. Use the safe summary part to build the filename
+        file_name = f"{issue_id}-{safe_summary_part}.{EXTENSION}" 
+        
+        
+        # Save issue details with the new filename
+        with open(os.path.join(issue_target_path, file_name), "w", encoding='utf-8') as f:
             f.write(f"# {issue_id} - {issue['summary']}\n\n")
             icreated = format_yt_time(issue["created"]) if ("created" in issue) else "-"
             iupdated = format_yt_time(issue["updated"]) if ("updated" in issue) else "-"
             f.write(f"\nCreated: {icreated}\nUpdated: {iupdated}\n")
             if "tags" in issue and issue["tags"]:
-              f.write("\nTAGS:\n");
+              f.write("\nTAGS:\n")
               for tag in issue["tags"]:
-                f.write(f"- {tag['name']}\n");
+                f.write(f"- {tag['name']}\n")
 
             if "customFields" in issue and issue["customFields"]:
-              f.write("\nCUSTOM FIELDS:\n");
+              f.write("\nCUSTOM FIELDS:\n")
               for field in issue["customFields"]:
                 fname = field.get('name') or "-"
                 fval = field.get('value')
-                # Handle cases where value is a dict
                 if isinstance(fval, dict):
                     fval = fval.get('name') or str(fval)
                 f.write(f"- {fname}: {fval}\n")
@@ -109,7 +116,7 @@ def proc_issues(issues, headers):
             f.write(f"\n---\n{issue.get('description', 'No description')}\n\n")
             f.write(f"\n---\n# Comments")
             for comment in issue.get("comments", []):
-                comment_timestamp = format_yt_time(comment["created"]) if 'created' in comment else "-";
+                comment_timestamp = format_yt_time(comment["created"]) if 'created' in comment else "-"
                 comment_author = comment.get('author', {}).get('name', 'Unknown User')
                 comment_section_title = f"Comment by {comment_author} at {comment_timestamp}"
                 f.write(f"\n\n---\n---\n{comment_section_title}\n")
@@ -118,13 +125,10 @@ def proc_issues(issues, headers):
                 else:
                     f.write(f"\n{comment['text']}\n")
 
-
-        # Download attachments
         if "attachments" in issue and issue["attachments"]:
             download_attachments(issue["attachments"], issue_target_path, headers)
 
 # --- NEW function to get specific issues ---
-
 def get_specific_issues(permanent_token: str, issue_ids: list):
     """
     Download specific issues by their readable IDs.

@@ -10,6 +10,8 @@ PROJECT_ID = os.getenv("YOUTRACK_PROJECT_ID")
 BASE_YOUTRACK_URL = os.getenv("YOUTRACK_URL")
 ID_PAD_LENGTH = int(os.getenv("ID_PAD_LENGTH"))
 EXTENSION = os.getenv("EXTENSION") # Use "html" for the spaces that use rich text formatting
+EXTENSION = os.getenv("EXTENSION") # Use "html" for the spaces that use rich text formatting
+MAX_SUMMARY_LENGTH_IN_PATH=int(os.getenv("MAX_SUMMARY_LENGTH_IN_PATH"))
 
 def clean_folder_name(
     name: str, replace_space: bool = True, space_replacement: str = "_"
