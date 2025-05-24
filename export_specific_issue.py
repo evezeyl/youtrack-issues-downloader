@@ -1,3 +1,4 @@
+# adapted from gemini 2025-05-26
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
@@ -5,15 +6,16 @@ import requests
 import time
 import argparse # Import the argparse library
 
-# --- Configuration from the original script (can be adjusted) ---
-ID_PAD_LENGTH = 3
-EXTENSION = "txt"
-# --- End Configuration ---
+# --- Configuration user specific : see .env files 
 
 # --- Load Environment Variables ---
 load_dotenv()
 YOUTRACK_TOKEN = os.getenv("YOUTRACK_TOKEN")
 BASE_YOUTRACK_URL = os.getenv("YOUTRACK_URL")
+# PROJECT_ID = os.getenv("YOUTRACK_PROJECT_ID")
+ID_PAD_LENGTH = int(os.getenv("ID_PAD_LENGTH"))
+EXTENSION = os.getenv("EXTENSION") # Use "html" for the spaces that use rich text formatting
+
 
 # --- Helper functions from the original script (unchanged) ---
 
@@ -83,7 +85,8 @@ def proc_issues(issues, headers):
         os.makedirs(issue_target_path, exist_ok=True)
 
         # Save issue details
-        with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w", encoding='utf-8') as f:
+        #with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w", encoding='utf-8') as f:
+        with open(os.path.join(issue_target_path, f"{issue_id}.{EXTENSION}"), "w", encoding='utf-8') as f:
             f.write(f"# {issue_id} - {issue['summary']}\n\n")
             icreated = format_yt_time(issue["created"]) if ("created" in issue) else "-"
             iupdated = format_yt_time(issue["updated"]) if ("updated" in issue) else "-"
@@ -150,6 +153,13 @@ def get_specific_issues(permanent_token: str, issue_ids: list):
 
 
 if __name__ == "__main__":
+    # Define the usage examples as a multi-line string
+    example_text = """examples:
+    > to export a single issue
+    python export_specific_issue.py PROJECT-123
+    > to export multiple issues
+    python export_specific_issue.py PROJECT-123 TST-45
+    """
     parser = argparse.ArgumentParser(
         description="Export specific issues from YouTrack by their readable IDs."
     )

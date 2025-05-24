@@ -158,7 +158,9 @@ def proc_issues(issues, full_refresh: bool, headers):
         os.makedirs(issue_target_path, exist_ok=True)
 
         # Save issue details
-        with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w") as f:
+        #with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w") as f:
+        # I like better with the ID (unless we want to automate other things, so letting line above in case)
+        with open(os.path.join(issue_target_path, f"{issue_id}.{EXTENSION}"), "w", encoding='utf-8') as f:
             f.write(f"# {issue_id} - {issue['summary']}\n\n")
             icreated = format_yt_time(issue["created"]) if ("created" in issue) else "-"
             iupdated = format_yt_time(issue["updated"]) if ("updated" in issue) else "-"

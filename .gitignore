@@ -5,3 +5,5 @@ __pycache__
 
 # this is important to ignore because it gives the token !
 .env
+# ignore exports 
+exports
