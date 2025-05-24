@@ -4,17 +4,12 @@ import os
 import requests
 import time
 
-
-# User configuration:
-ID_PAD_LENGTH = 3  # Pads issue numbers for folder names, ensuring order. Increase if >999 issues in your project.
-EXTENSION = "txt" # Use "html" for the spaces that use rich text formatting
-# User configuration ends
-
 load_dotenv()
 YOUTRACK_TOKEN = os.getenv("YOUTRACK_TOKEN")
 PROJECT_ID = os.getenv("YOUTRACK_PROJECT_ID")
 BASE_YOUTRACK_URL = os.getenv("YOUTRACK_URL")
-
+ID_PAD_LENGTH = int(os.getenv("ID_PAD_LENGTH"))
+EXTENSION = os.getenv("EXTENSION") # Use "html" for the spaces that use rich text formatting
 
 def clean_folder_name(
     name: str, replace_space: bool = True, space_replacement: str = "_"
