@@ -139,18 +139,20 @@ def get_issues(permanent_token: str, project_id: str, full_refresh: bool = False
       proc_issues(issues, full_refresh, headers);
 
 
-
 def proc_issues(issues, full_refresh: bool, headers):
     for issue in issues:
         issue_id = issue["idReadable"]
         issue_number_in_project = issue["numberInProject"]
-        issue_summary = issue["summary"]
+        issue_summary = issue["summary"] or ""
         project_short_name = issue["project"]["shortName"]
 
-        issue_target_path = os.path.join(
-            "exports",
-            f"{project_short_name}-{str(issue_number_in_project).zfill(ID_PAD_LENGTH)}-{clean_folder_name(issue_summary)}",
-        )
+        # --- Create one safe, truncated summary for both directory and file ---
+        truncated_summary = issue_summary[:MAX_SUMMARY_LENGTH_IN_PATH]
+        safe_summary_part = clean_folder_name(truncated_summary)
+        
+        # Use the safe summary part to build the directory name
+        directory_name = f"{project_short_name}-{str(issue_number_in_project).zfill(ID_PAD_LENGTH)}-{safe_summary_part}"
+        issue_target_path = os.path.join("exports", directory_name)
 
         if not full_refresh and os.path.exists(issue_target_path):
             print(f"Skipping {issue_target_path} as it already exists.")
@@ -158,42 +160,41 @@ def proc_issues(issues, full_refresh: bool, headers):
 
         print(f"Processing {issue_target_path}")
         os.makedirs(issue_target_path, exist_ok=True)
+        
+        # Use the safe summary part to build the filename
+        file_name = f"{issue_id}-{safe_summary_part}.{EXTENSION}"
 
-        # Save issue details
-        #with open(os.path.join(issue_target_path, f"content.{EXTENSION}"), "w") as f:
-        # I like better with the ID (unless we want to automate other things, so letting line above in case)
-        with open(os.path.join(issue_target_path, f"{issue_id}.{EXTENSION}"), "w", encoding='utf-8') as f:
+        with open(os.path.join(issue_target_path, file_name), "w", encoding='utf-8') as f:
             f.write(f"# {issue_id} - {issue['summary']}\n\n")
-            icreated = format_yt_time(issue["created"]) if ("created" in issue) else "-"
-            iupdated = format_yt_time(issue["updated"]) if ("updated" in issue) else "-"
+            icreated = format_yt_time(issue["created"]) if "created" in issue else "-"
+            iupdated = format_yt_time(issue["updated"]) if "updated" in issue else "-"
             f.write(f"\nCreated: {icreated}\nUpdated: {iupdated}\n")
+
             if "tags" in issue and issue["tags"]:
-              f.write("\nTAGS:\n");
+              f.write("\nTAGS:\n")
               for tag in issue["tags"]:
-                f.write(f"- {tag}\n");
+                f.write(f"- {tag['name']}\n")
 
             if "customFields" in issue and issue["customFields"]:
-              f.write("\nCUSTOM FIELDS:\n");
+              f.write("\nCUSTOM FIELDS:\n")
               for field in issue["customFields"]:
                 fname = field.get('name') or "-"
                 fval = field.get('value')
+                if isinstance(fval, dict):
+                    fval = fval.get('name') or str(fval)
                 f.write(f"- {fname}: {fval}\n")
 
             f.write(f"\n---\n{issue.get('description', 'No description')}\n\n")
             f.write(f"\n---\n# Comments")
             for comment in issue.get("comments", []):
-                comment_timestamp = format_yt_time(comment["created"]) if 'created' in comment else "-";
-                comment_section_title = (
-                    f"Comment by {comment['author']['name']} at {comment_timestamp}"
-                )
+                comment_timestamp = format_yt_time(comment["created"]) if 'created' in comment else "-"
+                comment_author = comment.get('author', {}).get('name', 'Unknown User')
+                comment_section_title = f"Comment by {comment_author} at {comment_timestamp}"
                 f.write(f"\n\n---\n---\n{comment_section_title}\n")
-                f.write(f"Deleted: {comment['deleted']}\n")
-                f.write(f"Reactions:\n")
-                for reaction in comment["reactions"]:
-                    f.write(
-                        f"    {reaction['author']['name']}: {reaction['reaction']}\n"
-                    )
-                f.write(f"\n{comment['text']}\n")
+                if comment.get('deleted'):
+                    f.write(f"  (This comment was deleted)\n")
+                else:
+                    f.write(f"\n{comment['text']}\n")
 
         # Download attachments
         if "attachments" in issue and issue["attachments"]:
