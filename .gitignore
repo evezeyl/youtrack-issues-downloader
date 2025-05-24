@@ -2,3 +2,6 @@
 exports*
 __pycache__
 .python-version
+
+# this is important to ignore because it gives the token !
+.env
